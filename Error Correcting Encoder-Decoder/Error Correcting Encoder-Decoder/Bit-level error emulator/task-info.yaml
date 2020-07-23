@@ -1,0 +1,271 @@
+type: edu
+custom_name: stage3
+files:
+- name: src/correcter/Main.java
+  visible: true
+  text: |
+    package correcter;
+    import java.util.Random;
+    import java.util.Scanner;
+    public class Main {
+        public static void main(String[] args) {
+            Scanner s = new Scanner(System.in);
+            String str = s.nextLine();
+            System.out.println(str);
+
+            String tripleStr = tripleChar(str);
+            System.out.println(tripleStr);
+
+            String encodedString = generateErrors(tripleStr);
+            System.out.println(encodedString);
+
+            String decodedString = decodeString(encodedString);
+            System.out.println(decodedString);
+
+        }
+
+        private static String decodeString(String str) {
+            String cleanStr = "";
+
+            for (int i = 0; i < str.length(); i +=3) {
+                char x = ' ';
+                String workStr = str.substring(i, str.length());
+                if (workStr.charAt(0) == workStr.charAt(1)) {
+                    x = workStr.charAt(0);
+                }
+                if (workStr.charAt(0) == workStr.charAt(2))  {
+                    x = workStr.charAt(0);
+                }
+                if (workStr.charAt(1) == workStr.charAt(2))  {
+                    x = workStr.charAt(1);
+                }
+                cleanStr += Character.toString(x);
+            }
+            return cleanStr;
+        }
+
+        public static String tripleChar(String str){
+            String outputStr = "";
+            for (int i = 0; i < str.length(); i++) {
+                outputStr += str.charAt(i) + "" + str.charAt(i) + "" + str.charAt(i);
+            }
+            return outputStr;
+        }
+        public static String generateErrors(String str){
+            Random rnd = new Random();
+            for (int i = 0; i < str.length(); i +=3) {
+                String rSub = "";
+                String oStr = "";
+                int r = 0;
+                int strLength = str.length();
+                if (i+3 > strLength) {
+                    oStr = str.substring(i, strLength);
+                    rSub = str.substring(i, strLength);
+                    r = (int)(Math.random() * rSub.length()) ;
+                } else {
+                    oStr = str.substring(i, i+3);
+                    rSub = str.substring(i, i+3);
+                    r = (int)(Math.random() * 3) ;
+                }
+    //            System.out.println(i+" "+(i+3)+" "+rSub);
+    //            System.out.println(oStr+" | "+rSub);
+    //            System.out.println("\tr: "+r);
+
+                String c = Character.toString(getRandomChar());
+                rSub = replaceChar(rSub, r, c);
+    //            System.out.println("\t"+x+" "+c+" "+rSub);
+    //            System.out.println("\t"+rSub);
+                str = str.substring(0, i) + rSub + str.substring(i+3, strLength);
+    //            System.out.println(oStr+" | "+rSub);
+            }
+    //        System.out.println(str);
+    //        System.out.println("length: "+str.length());
+            return str;
+        }
+        public static char getRandomChar() {
+            int rChar = (int)(Math.random() * 126);
+            if (rChar < 32) {
+                rChar *= 2;
+            }
+            return (char) rChar;
+
+        }
+        public static String replaceChar(String str, int index, String rChar) {
+            str = str.substring(0, index)
+                    + rChar
+                    + str.substring(index + 1);
+            return str;
+        }
+    }
+  learner_created: false
+- name: test/CorrecterTest.java
+  visible: false
+  text: |
+    import correcter.Main;
+
+    import org.hyperskill.hstest.testcase.CheckResult;
+    import org.hyperskill.hstest.stage.StageTest;
+    import org.hyperskill.hstest.testcase.TestCase;
+
+    import java.io.*;
+    import java.util.List;
+
+    class TestClue {
+        String input;
+
+        TestClue(String input) {
+            this.input = input;
+        }
+    }
+
+    public class CorrecterTest extends StageTest<TestClue> {
+
+        public static File received = null;
+
+        public CorrecterTest() throws Exception {
+            super(Main.class);
+        }
+
+        @Override
+        public List<TestCase<TestClue>> generate() {
+            TestClue firstTestClue = new TestClue("Eat more of these french buns!");
+            TestClue secondTestClue = new TestClue("$ome rand0m messAge");
+            TestClue thirdTestClue = new TestClue("better call Saul 555-00-73!");
+            TestClue sixthTestClue = new TestClue("5548172 6548 225147 23656595 5155");
+
+            return List.of(
+                new TestCase<TestClue>()
+                    .setAttach(firstTestClue)
+                    .addFile("send.txt", firstTestClue.input),
+
+                new TestCase<TestClue>()
+                    .setAttach(secondTestClue)
+                    .addFile("send.txt", secondTestClue.input),
+
+                new TestCase<TestClue>()
+                    .setAttach(thirdTestClue)
+                    .addFile("send.txt", thirdTestClue.input),
+
+                new TestCase<TestClue>()
+                    .setAttach(sixthTestClue)
+                    .addFile("send.txt", sixthTestClue.input)
+            );
+        }
+
+        @Override
+        public CheckResult check(String reply, TestClue clue) {
+            String path = System.getProperty("user.dir");
+            searchFile(path, "received.txt");
+
+            if (received == null) {
+                return new CheckResult(false,
+                    "Can't find received.txt file. " +
+                        "Make sure your program writes it down or " +
+                        "make sure the name of the file is correct.");
+            }
+
+            byte[] receivedContent;
+
+            FileInputStream stream;
+            try {
+                stream = new FileInputStream(received);
+            } catch (FileNotFoundException e) {
+                return new CheckResult(false,
+                    "Can't find received.txt file. " +
+                        "Make sure your program writes it down " +
+                        "or make sure the name of the file is correct.");
+            }
+
+            try {
+                receivedContent = stream.readAllBytes();
+            } catch (IOException e) {
+                throw new RuntimeException("Can't read the file");
+            }
+
+            String correctBinary = toBinary(clue.input.getBytes());
+            String outputBinary = toBinary(receivedContent);
+
+            return checkMatches(outputBinary, correctBinary);
+        }
+
+        private static String toBinary(byte[] bytes) {
+            StringBuilder sb = new StringBuilder(bytes.length * Byte.SIZE);
+            for (int i = 0; i < Byte.SIZE * bytes.length; i++) {
+                sb.append((bytes[i / Byte.SIZE] << i % Byte.SIZE & 0x80) == 0 ? '0' : '1');
+            }
+            return sb.toString();
+        }
+
+        private static byte[] fromBinary(String s) {
+            int sLen = s.length();
+            byte[] toReturn = new byte[(sLen + Byte.SIZE - 1) / Byte.SIZE];
+            char c;
+            for (int i = 0; i < sLen; i++)
+                if ((c = s.charAt(i)) == '1')
+                    toReturn[i / Byte.SIZE] = (byte) (toReturn[i / Byte.SIZE] | (0x80 >>> (i % Byte.SIZE)));
+                else if (c != '0')
+                    throw new IllegalArgumentException();
+            return toReturn;
+        }
+
+        private CheckResult checkMatches(String output, String correct) {
+            if (output.isEmpty() && correct.isEmpty()) return CheckResult.correct();
+
+            if (output.length() != correct.length()) {
+                return new CheckResult(false,
+                    "The program was expected to output " +
+                        correct.length() / 8 +
+                        " bytes, but output " +
+                        output.length() / 8);
+            }
+
+            for (int i = 0; i < output.length(); i += 8) {
+                String currOutputByte = output.substring(i, i+8);
+                String currCorrectByte = correct.substring(i, i+8);
+
+                int difference = 0;
+                for (int j = 0; j < currCorrectByte.length(); j++) {
+                    char currOutputBit = currOutputByte.charAt(j);
+                    char currCorrectBit = currCorrectByte.charAt(j);
+
+                    if (currCorrectBit != currOutputBit) {
+                        difference++;
+                    }
+                }
+
+                if (difference == 0) {
+                    return new CheckResult(false,
+                        "One of bytes from the input stayed the same but should be changed");
+                }
+
+                if (difference != 1) {
+                    return new CheckResult(false,
+                        "One of bytes from the input was changes in more than one bit");
+                }
+            }
+
+            return CheckResult.correct();
+        }
+
+        public static void searchFile(String dirName, String fileName) {
+            File dir = new File(dirName);
+            File[] list = dir.listFiles();
+
+            if (list != null) {
+                for (File f : list) {
+                    if (f.isDirectory()) {
+                        searchFile(f.getAbsolutePath(), fileName);
+                    } else if (f.getAbsolutePath().contains(fileName)) {
+                        received = f;
+                    }
+                }
+            }
+        }
+    }
+  learner_created: false
+- name: received.txt
+  visible: true
+  learner_created: true
+feedback_link: https://hyperskill.org/projects/58/stages/314/implement
+status: Solved
+record: 2
